@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bank MB - Smart Data Bank</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 0; }
+        body { background-color: #090d16; color: #f8fafc; display: flex; justify-content: center; min-height: 100vh; }
+        .app-container { width: 100%; max-width: 430px; background: #111827; min-height: 100vh; padding: 20px; display: flex; flex-direction: column; gap: 18px; box-shadow: 0 0 40px rgba(0,0,0,0.8); }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid #1f2937; }
+        .header h1 { font-size: 22px; background: linear-gradient(90deg, #38bdf8, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; }
+        .badge { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; }
+
+        .card { background: #1f2937; padding: 18px; border-radius: 16px; border: 1px solid #374151; }
+        .balance-card { background: linear-gradient(135deg, #0284c7 0%, #4f46e5 100%); padding: 24px; border-radius: 20px; text-align: center; box-shadow: 0 10px 25px rgba(79, 70, 229, 0.35); position: relative; overflow: hidden; }
+        .balance-card p { font-size: 13px; color: #e0e7ff; margin-bottom: 4px; }
+        .balance-card h2 { font-size: 44px; font-weight: 800; letter-spacing: -1px; }
+        .balance-card span { font-size: 18px; font-weight: 500; }
+        .loan-tag { display: inline-block; margin-top: 8px; background: rgba(0,0,0,0.25); padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #fde047; }
+
+        input, select { width: 100%; padding: 12px 14px; margin-bottom: 12px; border-radius: 10px; border: 1px solid #4b5563; background: #111827; color: white; font-size: 14px; outline: none; }
+        input:focus, select:focus { border-color: #38bdf8; }
+
+        .tabs { display: flex; gap: 8px; background: #111827; padding: 5px; border-radius: 12px; margin-bottom: 14px; }
+        .tab { flex: 1; padding: 8px; text-align: center; font-size: 13px; font-weight: 600; border-radius: 8px; cursor: pointer; color: #9ca3af; transition: 0.2s; }
+        .tab.active { background: #374151; color: #fff; }
+
+        .btn-group { display: flex; gap: 10px; }
+        button { width: 100%; padding: 13px; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        button:active { transform: scale(0.98); }
+        .btn-primary { background: #38bdf8; color: #090d16; }
+        .btn-deposit { background: #10b981; color: white; }
+        .btn-withdraw { background: #f59e0b; color: #090d16; }
+        .btn-loan { background: #8b5cf6; color: white; }
+
+        .hidden { display: none !important; }
+        .history-list { list-style: none; display: flex; flex-direction: column; gap: 8px; max-height: 190px; overflow-y: auto; margin-top: 10px; }
+        .history-item { background: #111827; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; border-left: 4px solid #38bdf8; }
+        .time { font-size: 11px; color: #6b7280; display: block; margin-top: 2px; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="header">
+        <h1>🏦 Bank MB</h1>
+        <span class="badge">LIVE PRO</span>
+    </div>
+
+    <!-- Login Section -->
+    <div id="authSection" class="card">
+        <h3 style="margin-bottom: 6px;">ගිණුමට පිවිසෙන්න</h3>
+        <p style="font-size: 13px; color: #9ca3af; margin-bottom: 14px;">ඔබේ දුරකථන අංකය ඇතුළත් කර ගිණුම ආරම්භ කරන්න.</p>
+        <input type="tel" id="phoneInput" placeholder="උදා: 0771234567" maxlength="10">
+        <button class="btn-primary" onclick="loginUser()">ඇතුළු වන්න</button>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboardSection" class="hidden" style="display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; justify-content: space-between; font-size: 13px; color: #9ca3af;">
+            <span>ගිණුම: <strong id="displayPhone" style="color: #38bdf8;"></strong></span>
+            <span onclick="logout()" style="color: #ef4444; cursor: pointer; font-weight: bold;">පිටවන්න</span>
+        </div>
+        
+        <div class="balance-card">
+            <p>ඉතුරුම් ශේෂය (Saved Balance)</p>
+            <h2><span id="balance">0.0</span> <span>GB</span></h2>
+            <div class="loan-tag" id="loanDisplay">ණය ශේෂය: 0.0 GB</div>
+        </div>
+
+        <div class="card">
+            <div class="tabs">
+                <div class="tab active" id="tabMain" onclick="switchTab('main')">තැන්පත් / ගැනීම</div>
+                <div class="tab" id="tabTransfer" onclick="switchTab('transfer')">යවන්න / ණය</div>
+            </div>
+
+            <!-- Tab 1: Deposit & Withdraw -->
+            <div id="panelMain">
+                <select id="network">
+                    <option value="Dialog">Dialog</option>
+                    <option value="Mobitel">Mobitel</option>
+                    <option value="Hutch">Hutch</option>
+                    <option value="Airtel">Airtel</option>
+                </select>
+                <input type="number" id="amount" placeholder="GB ප්‍රමාණය (උදා: 2.5)" step="0.1" min="0.1">
+                <div class="btn-group">
+                    <button class="btn-deposit" onclick="depositData()">+ තැන්පත්</button>
+                    <button class="btn-withdraw" onclick="withdrawData()">- ලබාගන්න</button>
+                </div>
+            </div>
+
+            <!-- Tab 2: P2P Transfer & Data Loan -->
+            <div id="panelTransfer" class="hidden">
+                <input type="tel" id="targetPhone" placeholder="ලබන්නාගේ අංකය (යවන්නේ නම් පමණක්)" maxlength="10">
+                <input type="number" id="specialAmount" placeholder="GB ප්‍රමාණය (උදා: 1.0)" step="0.1" min="0.1">
+                <div class="btn-group">
+                    <button class="btn-primary" onclick="transferData()">ඩේටා යවන්න</button>
+                    <button class="btn-loan" onclick="takeLoan()">ණයට ගන්න (1GB)</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 style="font-size: 14px; color: #9ca3af;">ගනුදෙනු වාර්තාව (History)</h3>
+            <ul class="history-list" id="historyList"></ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentUser = localStorage.getItem('bankMB_currentUser');
+    let userData = { balance: 0, loan: 0, history: [] };
+
+    if (currentUser) showDashboard();
+
+    function loginUser() {
+        const phone = document.getElementById('phoneInput').value.trim();
+        if (phone.length < 9) { alert("නිවැරදි දුරකථන අංකයක් දෙන්න!"); return; }
+        currentUser = phone;
+        localStorage.setItem('bankMB_currentUser', currentUser);
+        showDashboard();
+    }
+
+    function showDashboard() {
+        document.getElementById('authSection').classList.add('hidden');
+        document.getElementById('dashboardSection').classList.remove('hidden');
+        document.getElementById('displayPhone').innerText = currentUser;
+        loadData();
+    }
+
+    function logout() {
+        localStorage.removeItem('bankMB_currentUser');
+        location.reload();
+    }
+
+    function switchTab(tab) {
+        document.getElementById('tabMain').classList.toggle('active', tab === 'main');
+        document.getElementById('tabTransfer').classList.toggle('active', tab === 'transfer');
+        document.getElementById('panelMain').classList.toggle('hidden', tab !== 'main');
+        document.getElementById('panelTransfer').classList.toggle('hidden', tab !== 'transfer');
+    }
+
+    function loadData() {
+        const saved = localStorage.getItem('bankMB_data_' + currentUser);
+        if (saved) userData = JSON.parse(saved);
+        updateUI();
+    }
+
+    function saveData() {
+        localStorage.setItem('bankMB_data_' + currentUser, JSON.stringify(userData));
+        updateUI();
+    }
+
+    function addLog(title, amount, color) {
+        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        userData.history.unshift({ title, amount, color, time });
+        if (userData.history.length > 20) userData.history.pop();
+    }
+
+    function updateUI() {
+        document.getElementById('balance').innerText = userData.balance.toFixed(1);
+        document.getElementById('loanDisplay').innerText = `ණය ශේෂය: ${userData.loan.toFixed(1)} GB`;
+        
+        const list = document.getElementById('historyList');
+        list.innerHTML = userData.history.length ? '' : '<li style="color:#6b7280; font-size:13px; text-align:center;">තවම ගනුදෙනු නොමැත</li>';
+        userData.history.forEach(item => {
+            const li = document.createElement('li');
+            li.className = 'history-item';
+            li.style.borderLeftColor = item.color;
+            li.innerHTML = `<div>${item.title}<span class="time">${item.time}</span></div><strong style="color:${item.color}">${item.amount}</strong>`;
+            list.appendChild(li);
+        });
+    }
+
+    function depositData() {
+        let amt = parseFloat(document.getElementById('amount').value);
+        const net = document.getElementById('network').value;
+        if (!amt || amt <= 0) { alert("GB ප්‍රමාණය ඇතුළත් කරන්න!"); return; }
+
+        if (userData.loan > 0) {
+            if (amt >= userData.loan) {
+                amt -= userData.loan;
+                addLog(`ණය පියවීම (${net})`, `-${userData.loan.toFixed(1)} GB`, '#f87171');
+                userData.loan = 0;
+            } else {
+                userData.loan -= amt;
+                addLog(`ණය පියවීම (${net})`, `-${amt.toFixed(1)} GB`, '#f87171');
+                amt = 0;
+            }
+        }
+
+        if (amt > 0) {
+            userData.balance += amt;
+            addLog(`තැන්පත් කළා (${net})`, `+${amt.toFixed(1)} GB`, '#10b981');
+        }
+        document.getElementById('amount').value = '';
+        saveData();
+        alert("ගනුදෙනුව සාර්ථකයි!");
+    }
+
+    function withdrawData() {
+        const amt = parseFloat(document.getElementById('amount').value);
+        const net = document.getElementById('network').value;
+        if (!amt || amt <= 0) { alert("GB ප්‍රමාණය ඇතුළත් කරන්න!"); return; }
+        if (amt > userData.balance) { alert("ප්‍රමාණවත් GB ශේෂයක් නොමැත!"); return; }
+
+        userData.balance -= amt;
+        addLog(`ලබාගත්තා (${net})`, `-${amt.toFixed(1)} GB`, '#f59e0b');
+        document.getElementById('amount').value = '';
+        saveData();
+        alert(`${amt} GB ඔබේ ${net} අංකයට යොමු කෙරුණි!`);
+    }
+
+    function transferData() {
+        _target = document.getElementById('targetPhone').value.trim();
+        const amt = parseFloat(document.getElementById('specialAmount').value);
+        const target = document.getElementById('targetPhone').value.trim();
+        if (target.length < 9) { alert("ලබන්නාගේ අංකය නිවැරදිව දෙන්න!"); return; }
+        if (!amt || amt <= 0 || amt > userData.balance) { alert("ශේෂය ප්‍රමාණවත් නැත!"); return; }
+
+        userData.balance -= amt;
+        addLog(`${target} වෙත යැව්වා`, `-${amt.toFixed(1)} GB`, '#38bdf8');
+        document.getElementById('targetPhone').value = '';
+        document.getElementById('specialAmount').value = '';
+        saveData();
+        alert(`${target} අංකයට ${amt} GB සාර්ථකව යවන ලදී!`);
+    }
+
+    function takeLoan() {
+        if (userData.loan >= 2.0) { alert("ඔබට උපරිම ණය සීමාව (2GB) ඉක්මවා ඇත!"); return; }
+        userData.balance += 1.0;
+        userData.loan += 1.0;
+        addLog(`හදිසි ඩේටා ණය`, `+1.0 GB`, '#a78bfa');
+        saveData();
+        alert("1.0 GB හදිසි ණය මුදල ඔබේ ගිණුමට එකතු විය!");
+    }
+</script>
+
+</body>
+</html>
